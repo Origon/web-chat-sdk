@@ -12,8 +12,6 @@ import { MESSAGE_ROLES } from './constants.js'
 /**
  * @typedef {Object} ChatCallbacks
  * @property {(messages: Array) => void} [onMessagesUpdate] - Called when messages array should be updated
- * @property {(isTyping: boolean) => void} [onTyping] - Called when typing status changes
- * @property {(isLiveAgent: boolean) => void} [onLiveAgentMode] - Called when live agent mode status changes
  * @property {(sessionId: string) => void} [onSessionUpdate] - Called when session ID is updated
  */
 
@@ -22,7 +20,6 @@ import { MESSAGE_ROLES } from './constants.js'
  * @property {string} sessionId
  * @property {string} sseUrl
  * @property {string} [requestId]
- * @property {boolean} liveAgent
  * @property {AbortController} [abortController]
  * @property {string} [lastStreamId]
  * @property {Array} messages
@@ -43,7 +40,6 @@ function createSession(callbacks = {}) {
     requestId: undefined,
     sseUrl: undefined,
     abortController: undefined,
-    liveAgent: false,
     lastStreamId: undefined,
     messages: [],
     callbacks
@@ -200,18 +196,13 @@ export function sendMessage({ text, html }) {
 
         await sleep(200)
 
-        // Add loading message for bot if not in live agent mode
-        if (!currentSession.liveAgent) {
-          const loadingMessage = {
-            role: MESSAGE_ROLES.BOT,
-            text: '',
-            loading: true
-          }
-          currentSession.messages = [...currentSession.messages, loadingMessage]
-          currentSession.callbacks.onMessagesUpdate?.([...currentSession.messages])
-        } else {
-          resolve(currentSession.sessionId)
+        const loadingMessage = {
+          role: MESSAGE_ROLES.BOT,
+          text: '',
+          loading: true
         }
+        currentSession.messages = [...currentSession.messages, loadingMessage]
+        currentSession.callbacks.onMessagesUpdate?.([...currentSession.messages])
 
         const url = new URL(currentSession.sseUrl)
         if (currentSession.sessionId) {
@@ -254,43 +245,6 @@ export function sendMessage({ text, html }) {
             if (data.status === 'connected') {
               currentSession.sessionId = data.sessionId
               currentSession.requestId = data.requestId
-              if (currentSession.liveAgent) {
-                resolve(currentSession.sessionId)
-              }
-            } else if (data.agent) {
-              currentSession.liveAgent = true
-              const { type, data: payload } = data.agent
-
-              switch (type) {
-                case 'typing':
-                  currentSession.callbacks.onTyping?.(true)
-                  currentSession.callbacks.onLiveAgentMode?.(true)
-                  break
-                case 'typingOff':
-                  currentSession.callbacks.onTyping?.(false)
-                  currentSession.callbacks.onLiveAgentMode?.(true)
-                  break
-                case 'message':
-                  if (payload.role !== MESSAGE_ROLES.USER) {
-                    // Remove loading messages and add new message
-                    currentSession.messages = currentSession.messages.filter((msg) => !msg.loading)
-                    currentSession.messages = [...currentSession.messages, payload]
-
-                    const isEnded = payload.action === 'ended' || payload.action === 'left'
-                    if (isEnded) {
-                      currentSession.liveAgent = false
-                    }
-
-                    currentSession.callbacks.onMessagesUpdate?.([...currentSession.messages])
-                    currentSession.callbacks.onLiveAgentMode?.(!isEnded)
-                  }
-                  if (payload.action === 'ended' || payload.action === 'left') {
-                    currentSession.liveAgent = false
-                  }
-                  break
-                default:
-                  break
-              }
             } else if (data.message !== undefined) {
               let messages = currentSession.messages
 
