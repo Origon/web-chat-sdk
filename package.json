@@ -22,12 +22,13 @@
     "url": "git+https://github.com/origonai/web-chat-sdk.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "deploy": "yarn build && npm publish"
+    "deploy": "yarn build && npm publish --access public"
   },
   "keywords": [
     "chat",
