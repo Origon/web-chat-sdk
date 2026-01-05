@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/origonai/web-chat-sdk.git"
+    "url": "git+https://github.com/origon/web-chat-sdk.git"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
