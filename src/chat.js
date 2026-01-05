@@ -139,9 +139,10 @@ export async function startChat(payload = {}) {
       }))
     }
 
-    const searchParams = new URLSearchParams({
-      externalId: getExternalId()
-    })
+    const searchParams = new URLSearchParams()
+    if (!currentSession.credentials.token) {
+      searchParams.set('externalId', getExternalId()) // externalId is needed only for public urls, not for internal chat (where token is provided)
+    }
     currentSession.sseUrl = `${currentSession.credentials.endpoint}?${searchParams.toString()}`
     currentSession.sessionId = payload.sessionId
     currentSession.messages = messages
@@ -226,7 +227,7 @@ export function getTransport() {
  * @param {{ text: string, html?: string }} message
  * @returns {Promise<string>}
  */
-export function sendMessage({ text, html }) {
+export function sendMessage({ text, html, context }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
@@ -285,7 +286,8 @@ export function sendMessage({ text, html }) {
           headers,
           body: JSON.stringify({
             message: text,
-            html
+            html,
+            context
           }),
           signal: currentSession.abortController.signal,
           onopen: async (response) => {
