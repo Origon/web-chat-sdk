@@ -6,7 +6,7 @@
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { getMessages, authenticate } from './http.js'
-import { getDeviceId, sleep } from './utils.js'
+import { getDeviceId, getSseEndpoint, sleep } from './utils.js'
 import { MESSAGE_ROLES } from './constants.js'
 import {
   connectSocket,
@@ -143,7 +143,9 @@ export async function startChat(payload = {}) {
     if (!currentSession.credentials.token) {
       searchParams.set('externalId', getExternalId()) // externalId is needed only for public urls, not for internal chat (where token is provided)
     }
-    currentSession.sseUrl = `${currentSession.credentials.endpoint}?${searchParams.toString()}`
+    currentSession.sseUrl = `${getSseEndpoint(
+      currentSession.credentials.endpoint
+    )}?${searchParams.toString()}`
     currentSession.sessionId = payload.sessionId
     currentSession.messages = messages
 
@@ -309,6 +311,23 @@ export function sendMessage({ text, html, context }) {
                 sessionId: currentSession.sessionId,
                 requestId: data.requestId
               })
+            } else if (data.error) {
+              const errorMessage =
+                data.error && typeof data.error === 'string'
+                  ? data.error
+                  : 'Failed to connect to the system'
+              const lastIndex = currentSession.messages.length - 1
+              const lastMsg = currentSession.messages[lastIndex]
+              const updatedMsg = {
+                ...lastMsg,
+                loading: false,
+                errorText: errorMessage
+              }
+              currentSession.messages = currentSession.messages.map((msg, index) =>
+                index === lastIndex ? updatedMsg : msg
+              )
+              currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
+              reject(new Error(errorMessage))
             } else if (data.message !== undefined) {
               // If streamId changes, start a new assistant message
               if (data.streamId !== undefined) {
@@ -348,20 +367,6 @@ export function sendMessage({ text, html, context }) {
               // Store session info for reuse
               currentSession.sessionId = data.session_id ?? currentSession.sessionId
               currentSession.requestId = data.requestId ?? currentSession.requestId
-            } else if (data.error) {
-              const errorMessage = 'Failed to connect to the system'
-              const lastIndex = currentSession.messages.length - 1
-              const lastMsg = currentSession.messages[lastIndex]
-              const updatedMsg = {
-                ...lastMsg,
-                loading: false,
-                errorText: errorMessage
-              }
-              currentSession.messages = currentSession.messages.map((msg, index) =>
-                index === lastIndex ? updatedMsg : msg
-              )
-              currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
-              reject(new Error(errorMessage))
             }
           },
           onerror: (error) => {

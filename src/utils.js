@@ -61,17 +61,24 @@ export async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-//TODO: Update this once its proper from backend
+export function getSseEndpoint(baseUrl) {
+  let sseEndpoint
+  try {
+    const url = new URL(baseUrl)
+    sseEndpoint = `https://${url.hostname}${url.pathname}/sse`
+  } catch {
+    console.error('SSE Invalid base URL: ', baseUrl)
+  }
+  return sseEndpoint
+}
+
 export function getSocketEndpoint(baseUrl) {
   let socketEndpoint
   try {
     const url = new URL(baseUrl)
-    const pathParts = url.pathname.split('/')
-    const systemId = pathParts.pop() // Extract systemId from the end
-    const basePath = pathParts.join('/')
-    socketEndpoint = `wss://${url.hostname}${basePath}/system/${systemId}/wss`
+    socketEndpoint = `wss://${url.hostname}${url.pathname}/wss`
   } catch {
-    console.error('Invalid base URL: ', baseUrl)
+    console.error('Socket Invalid base URL: ', baseUrl)
   }
   return socketEndpoint
 }
