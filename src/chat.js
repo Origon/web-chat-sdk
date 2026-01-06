@@ -125,18 +125,7 @@ export async function startChat(payload = {}) {
     let messages = []
 
     if (payload.sessionId) {
-      const messagesRes = await getMessages(payload.sessionId)
-      messages = (messagesRes?.sessionHistory ?? []).map((msg) => ({
-        id: msg.id,
-        text: msg.text,
-        role: msg.youtubeVideo
-          ? MESSAGE_ROLES.BOT // for youtube video messages, role is "system" from backend, we need to make it "assistant"
-          : msg.role,
-        timestamp: msg.timestamp,
-        video: msg.youtubeVideo,
-        channel: msg.channel,
-        done: true
-      }))
+      messages = await getMessages(payload.sessionId)
     }
 
     const searchParams = new URLSearchParams()

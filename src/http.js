@@ -4,6 +4,7 @@
  */
 
 import { getCredentials, getExternalId } from './chat.js'
+import { MESSAGE_ROLES } from './constants.js'
 
 const AUTHENTICATION_ERROR = 'Something went wrong initializing the chat'
 const INITIALIZATION_ERROR = 'Chat SDK not initialized'
@@ -67,7 +68,20 @@ export async function getMessages(sessionId) {
     throw new Error('Unable to load messages, please try again later')
   }
 
-  return response.json()
+  const data = await response.json()
+  const messages = (data?.sessionHistory ?? []).map((msg) => ({
+    id: msg.id,
+    text: msg.text,
+    role: msg.youtubeVideo
+      ? MESSAGE_ROLES.BOT // for youtube video messages, role is "system" from backend, we need to make it "assistant"
+      : msg.role,
+    timestamp: msg.timestamp,
+    video: msg.youtubeVideo,
+    channel: msg.channel,
+    done: true
+  }))
+
+  return messages
 }
 
 /**
