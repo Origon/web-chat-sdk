@@ -286,6 +286,10 @@ MESSAGE_ROLES.ASSISTANT // 'assistant' - AI/bot or LLM AI Agent responses
 MESSAGE_ROLES.USER // 'user' - Widget user messages
 MESSAGE_ROLES.SUPERVISOR // 'supervisor' - Human supervisor messages
 MESSAGE_ROLES.SYSTEM // 'system' - System notifications (e.g., "Agent joined" / "Agent left")
+
+// Deprecated (will be removed in v1.0):
+MESSAGE_ROLES.BOT // use ASSISTANT instead
+MESSAGE_ROLES.AGENT // use SUPERVISOR instead
 ```
 
 ---
