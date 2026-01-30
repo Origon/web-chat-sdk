@@ -281,6 +281,7 @@ export function sendMessage({ text, html, context }) {
             context
           }),
           signal: currentSession.abortController.signal,
+          openWhenHidden: true,
           onopen: async (response) => {
             if (!response.ok) {
               console.error('Failed to send message bad response: ', response)
