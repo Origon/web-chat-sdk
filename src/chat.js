@@ -246,7 +246,7 @@ export function sendMessage({ text, html, context }) {
         }
 
         const loadingMessage = {
-          role: MESSAGE_ROLES.BOT,
+          role: MESSAGE_ROLES.ASSISTANT,
           text: '',
           loading: true
         }
@@ -325,7 +325,7 @@ export function sendMessage({ text, html, context }) {
                 } else if (data.streamId !== currentSession.lastStreamId) {
                   currentSession.lastStreamId = data.streamId
                   const newBotMessage = {
-                    role: MESSAGE_ROLES.BOT,
+                    role: MESSAGE_ROLES.ASSISTANT,
                     text: '',
                     loading: true
                   }

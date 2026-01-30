@@ -3,8 +3,8 @@
  */
 
 export const MESSAGE_ROLES = {
-  BOT: 'assistant', // this can be automated or LLM AI Agent response
+  ASSISTANT: 'assistant', // this can be automated or LLM AI Agent response
   USER: 'user', // this is widget user
-  AGENT: 'agent', // this is human agent (dock side)
+  SUPERVISOR: 'supervisor', // this is human supervisor (ex. Samespace Dock agent, or Resolve human agent)
   SYSTEM: 'system' // this is system message, for ex "Agent joined" / "Agent left"
 }

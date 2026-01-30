@@ -282,10 +282,10 @@ Enum for message roles in the chat.
 ```javascript
 import { MESSAGE_ROLES } from '@origonai/web-chat-sdk'
 
-MESSAGE_ROLES.BOT // 'assistant' - AI/bot responses
-MESSAGE_ROLES.USER // 'user' - End user messages
-MESSAGE_ROLES.AGENT // 'agent' - Human agent messages
-MESSAGE_ROLES.SYSTEM // 'system' - System notifications
+MESSAGE_ROLES.ASSISTANT // 'assistant' - AI/bot or LLM AI Agent responses
+MESSAGE_ROLES.USER // 'user' - Widget user messages
+MESSAGE_ROLES.SUPERVISOR // 'supervisor' - Human supervisor messages
+MESSAGE_ROLES.SYSTEM // 'system' - System notifications (e.g., "Agent joined" / "Agent left")
 ```
 
 ---
@@ -299,7 +299,7 @@ interface Message {
   id?: string
   text: string
   html?: string
-  role: 'assistant' | 'user' | 'agent' | 'system'
+  role: 'assistant' | 'user' | 'supervisor' | 'system'
   timestamp?: string
   loading?: boolean
   done?: boolean

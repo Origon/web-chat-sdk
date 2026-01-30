@@ -73,7 +73,7 @@ export async function getMessages(sessionId) {
     id: msg.id,
     text: msg.text,
     role: msg.youtubeVideo
-      ? MESSAGE_ROLES.BOT // for youtube video messages, role is "system" from backend, we need to make it "assistant"
+      ? MESSAGE_ROLES.ASSISTANT // for youtube video messages, role is "system" from backend, we need to make it "assistant"
       : msg.role,
     timestamp: msg.timestamp,
     video: msg.youtubeVideo,
