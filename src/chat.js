@@ -21,6 +21,7 @@ import {
  * @property {(index: number, updatedMsg: Object) => void} [onMessageUpdate] - Called when an existing message is updated
  * @property {(sessionId: string) => void} [onSessionUpdate] - Called when session ID is updated
  * @property {(transport: TransportType) => void} [onTransportUpdate] - Called when transport type changes
+ * @property {(control: 'agent' | 'human') => void} [onControlUpdate] - Called when control changes between agent and human
  */
 
 /**
@@ -56,7 +57,8 @@ function createSession(callbacks = {}) {
     lastStreamId: undefined,
     messages: [],
     callbacks,
-    transport: 'sse'
+    transport: 'sse',
+    control: 'agent'
   }
 }
 
@@ -245,12 +247,14 @@ export function sendMessage({ text, html, context }) {
           return
         }
 
-        const loadingMessage = {
-          role: MESSAGE_ROLES.ASSISTANT,
-          text: '',
-          loading: true
+        if (currentSession.control === 'agent') {
+          const loadingMessage = {
+            role: MESSAGE_ROLES.ASSISTANT,
+            text: '',
+            loading: true
+          }
+          addMessage(loadingMessage)
         }
-        addMessage(loadingMessage)
 
         const url = new URL(currentSession.sseUrl)
         if (currentSession.sessionId) {
@@ -301,6 +305,9 @@ export function sendMessage({ text, html, context }) {
                 sessionId: currentSession.sessionId,
                 requestId: data.requestId
               })
+            } else if (data.control) {
+              currentSession.control = data.control
+              currentSession.callbacks.onControlUpdate?.(data.control)
             } else if (data.error) {
               const errorMessage =
                 data.error && typeof data.error === 'string'
@@ -319,6 +326,23 @@ export function sendMessage({ text, html, context }) {
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               reject(new Error(errorMessage))
             } else if (data.message !== undefined) {
+              // If role is supervisor, treat it as a new message
+              if (data.role === MESSAGE_ROLES.SUPERVISOR) {
+                const supervisorMessage = {
+                  role: MESSAGE_ROLES.SUPERVISOR,
+                  text: data.message,
+                  sources: data.sources,
+                  done: true
+                }
+                addMessage(supervisorMessage)
+                resolve(currentSession.sessionId)
+
+                // Store session info for reuse
+                currentSession.sessionId = data.session_id ?? currentSession.sessionId
+                currentSession.requestId = data.requestId ?? currentSession.requestId
+                return
+              }
+
               // If streamId changes, start a new assistant message
               if (data.streamId !== undefined) {
                 if (currentSession.lastStreamId === undefined) {
