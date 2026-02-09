@@ -26,8 +26,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
+    "build": "vite build --mode production",
+    "dev": "vite build --watch --mode development",
     "deploy": "yarn build && npm publish --access public"
   },
   "keywords": [

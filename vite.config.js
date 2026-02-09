@@ -6,25 +6,30 @@ import { dirname } from 'node:path'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-export default defineConfig({
-  esbuild: {
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
-  },
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    lib: {
-      entry: resolve(__dirname, 'src/index.js'),
-      name: 'OrigonChatSDK',
-      formats: ['es'],
-      fileName: () => 'origon-chat-sdk.js'
+export default defineConfig(({ mode }) => {
+  const isProd = mode === 'production'
+
+  return {
+    esbuild: {
+      // Keep logs in local/watch builds; drop only for production builds.
+      drop: isProd ? ['console', 'debugger'] : []
     },
-    rollupOptions: {
-      // External dependencies that shouldn't be bundled
-      external: ['@microsoft/fetch-event-source']
-    },
-    target: 'es2018',
-    sourcemap: true,
-    minify: 'esbuild'
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+      lib: {
+        entry: resolve(__dirname, 'src/index.js'),
+        name: 'OrigonChatSDK',
+        formats: ['es'],
+        fileName: () => 'origon-chat-sdk.js'
+      },
+      rollupOptions: {
+        // External dependencies that shouldn't be bundled
+        external: ['@microsoft/fetch-event-source']
+      },
+      target: 'es2018',
+      sourcemap: true,
+      minify: isProd ? 'esbuild' : false
+    }
   }
 })

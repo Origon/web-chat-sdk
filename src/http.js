@@ -54,11 +54,11 @@ export async function getHistory() {
 }
 
 /**
- * Get messages for a specific session
+ * Get session data (control and history) for a specific session
  * @param {string} sessionId
- * @returns {Promise<{ sessionHistory: Array }>}
+ * @returns {Promise<{ control: string, messages: Array }>}
  */
-export async function getMessages(sessionId) {
+export async function getSession(sessionId) {
   const queryParams = new URLSearchParams({
     sessionId
   })
@@ -69,7 +69,8 @@ export async function getMessages(sessionId) {
   }
 
   const data = await response.json()
-  const messages = (data?.sessionHistory ?? []).map((msg) => ({
+  const control = data?.control
+  const messages = (data?.history ?? []).map((msg) => ({
     id: msg.id,
     text: msg.text,
     role: msg.youtubeVideo
@@ -81,7 +82,7 @@ export async function getMessages(sessionId) {
     done: true
   }))
 
-  return messages
+  return { control, messages }
 }
 
 /**

@@ -39,7 +39,7 @@
  */
 
 // HTTP API functions
-export { authenticate, getHistory, getMessages } from './http.js'
+export { authenticate, getHistory, getSession } from './http.js'
 
 // Chat functions
 export { initialize, startChat, sendMessage, disconnect, setCallbacks } from './chat.js'

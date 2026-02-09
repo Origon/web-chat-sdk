@@ -5,7 +5,7 @@
  */
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { getMessages, authenticate } from './http.js'
+import { getSession, authenticate } from './http.js'
 import { getDeviceId, getSseEndpoint, sleep } from './utils.js'
 import { MESSAGE_ROLES } from './constants.js'
 import {
@@ -125,9 +125,12 @@ export async function startChat(payload = {}) {
     }
 
     let messages = []
+    let control = 'agent'
 
     if (payload.sessionId) {
-      messages = await getMessages(payload.sessionId)
+      const session = await getSession(payload.sessionId)
+      messages = session.messages
+      control = session.control
     }
 
     const searchParams = new URLSearchParams()
@@ -139,12 +142,19 @@ export async function startChat(payload = {}) {
     )}?${searchParams.toString()}`
     currentSession.sessionId = payload.sessionId
     currentSession.messages = messages
+    currentSession.control = control
+
+    if (control === 'human') {
+      // Connect to SSE for incoming messages when control is human
+      sendMessage({ text: '', html: '' }).catch(() => {})
+    }
 
     console.log('Chat initiated successfully')
 
     return {
       sessionId: currentSession.sessionId,
       messages,
+      control,
       configData
     }
   } catch (error) {
@@ -224,15 +234,19 @@ export function sendMessage({ text, html, context }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
-        // Add user message
-        const userMessage = {
-          role: MESSAGE_ROLES.USER,
-          text,
-          html,
-          timestamp: new Date().toISOString()
+        const isEmpty = !text && !html
+
+        // Add user message only if there's content
+        if (!isEmpty) {
+          const userMessage = {
+            role: MESSAGE_ROLES.USER,
+            text,
+            html,
+            timestamp: new Date().toISOString()
+          }
+          addMessage(userMessage)
+          await sleep(200)
         }
-        addMessage(userMessage)
-        await sleep(200)
 
         // If transport is socket and socket is connected, use socket
         if (currentSession.transport === 'socket' && isSocketConnected()) {
@@ -279,7 +293,7 @@ export function sendMessage({ text, html, context }) {
         await fetchEventSource(url.toString(), {
           method: 'POST',
           headers,
-          body: JSON.stringify({
+          body: isEmpty ? undefined : JSON.stringify({
             message: text,
             html,
             context
@@ -293,21 +307,28 @@ export function sendMessage({ text, html, context }) {
             }
           },
           onmessage: (response) => {
-            // console.log('Event: ', response)
+            console.log('Event: ', response)
             const data = JSON.parse(response.data)
 
             if (response.event === 'connected') {
               currentSession.sessionId = data.sessionId
               currentSession.requestId = data.requestId
+              console.log('Connected: ', data)
+              if (data.control) {
+                currentSession.control = data.control
+                currentSession.callbacks.onControlUpdate?.(data.control)
+              }
             } else if (response.event === 'upgrade_to_websocket') {
               console.log('Upgrade to websocket: ', data)
               connectSocket({
                 sessionId: currentSession.sessionId,
                 requestId: data.requestId
               })
-            } else if (data.control) {
-              currentSession.control = data.control
-              currentSession.callbacks.onControlUpdate?.(data.control)
+            } else if (response.event === 'update') {
+              if (data.control) {
+                currentSession.control = data.control
+                currentSession.callbacks.onControlUpdate?.(data.control)
+              }
             } else if (data.error) {
               const errorMessage =
                 data.error && typeof data.error === 'string'
