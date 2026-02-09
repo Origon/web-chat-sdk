@@ -130,7 +130,7 @@ export async function startChat(payload = {}) {
     if (payload.sessionId) {
       const session = await getSession(payload.sessionId)
       messages = session.messages
-      control = session.control
+      control = session.control || 'agent'
     }
 
     const searchParams = new URLSearchParams()
@@ -293,11 +293,13 @@ export function sendMessage({ text, html, context }) {
         await fetchEventSource(url.toString(), {
           method: 'POST',
           headers,
-          body: isEmpty ? undefined : JSON.stringify({
-            message: text,
-            html,
-            context
-          }),
+          body: isEmpty
+            ? undefined
+            : JSON.stringify({
+                message: text,
+                html,
+                context
+              }),
           signal: currentSession.abortController.signal,
           openWhenHidden: true,
           onopen: async (response) => {
