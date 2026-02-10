@@ -348,6 +348,8 @@ export function sendMessage({ text, html, context }) {
               )
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               reject(new Error(errorMessage))
+            } else if (response.event === 'done') {
+              resolve(currentSession.sessionId)
             } else if (data.message !== undefined) {
               // If role is supervisor, treat it as a new message
               if (data.role === MESSAGE_ROLES.SUPERVISOR) {
@@ -398,7 +400,6 @@ export function sendMessage({ text, html, context }) {
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
 
               if (data.done) {
-                resolve(currentSession.sessionId)
               }
 
               // Store session info for reuse
