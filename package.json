@@ -1,6 +1,6 @@
 {
   "name": "@origonai/web-chat-sdk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Origon Web Chat SDK - Core chat functionality without UI dependencies",
   "type": "module",
   "main": "./dist/origon-chat-sdk.js",
