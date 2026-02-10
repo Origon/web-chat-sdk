@@ -349,6 +349,10 @@ function handleCallServerEvent(action) {
       handleAnswer(action.data)
       break
 
+    case 'connected':
+      handleConnected(action.data)
+      break
+
     case 'ice':
       handleIceCandidate(action.data)
       break
@@ -371,16 +375,23 @@ function handleCallServerEvent(action) {
 }
 
 /**
+ * Handle connected event
+ * @param {Object} data
+ */
+function handleConnected(data) {
+  console.log('Received connected event')
+  currentSession.sessionId = data.sessionId
+  // Update chat session with the new sessionId and notify controller
+  updateSessionId(data.sessionId)
+}
+
+/**
  * Handle answer
  * @param {Object} data
  */
 async function handleAnswer(data) {
   try {
     console.log('Received answer')
-
-    currentSession.sessionId = data.sessionId
-    // Update chat session with the new sessionId and notify controller
-    updateSessionId(data.sessionId)
 
     if (currentSession.peerConnection) {
       const answer = new RTCSessionDescription({
