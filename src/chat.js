@@ -361,7 +361,7 @@ export function sendMessage({ text, html, context }) {
                 resolve(currentSession.sessionId)
 
                 // Store session info for reuse
-                currentSession.sessionId = data.session_id ?? currentSession.sessionId
+                currentSession.sessionId = data.sessionId ?? currentSession.sessionId
                 currentSession.requestId = data.requestId ?? currentSession.requestId
                 return
               }
@@ -402,7 +402,7 @@ export function sendMessage({ text, html, context }) {
               }
 
               // Store session info for reuse
-              currentSession.sessionId = data.session_id ?? currentSession.sessionId
+              currentSession.sessionId = data.sessionId ?? currentSession.sessionId
               currentSession.requestId = data.requestId ?? currentSession.requestId
             }
           },
