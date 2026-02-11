@@ -349,6 +349,17 @@ export function sendMessage({ text, html, context }) {
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               reject(new Error(errorMessage))
             } else if (response.event === 'done') {
+              const lastIndex = currentSession.messages.length - 1
+              const lastMsg = currentSession.messages[lastIndex]
+              const updatedMsg = {
+                ...lastMsg,
+                loading: false,
+                done: true
+              }
+              currentSession.messages = currentSession.messages.map((msg, index) =>
+                index === lastIndex ? updatedMsg : msg
+              )
+              currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               resolve(currentSession.sessionId)
             } else if (data.message !== undefined) {
               // If role is supervisor, treat it as a new message
