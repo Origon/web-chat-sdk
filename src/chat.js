@@ -230,7 +230,7 @@ export function getTransport() {
  * @param {{ text: string, html?: string }} message
  * @returns {Promise<string>}
  */
-export function sendMessage({ text, html, context }) {
+export function sendMessage({ text, html, context, attachments }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
@@ -242,7 +242,8 @@ export function sendMessage({ text, html, context }) {
             role: MESSAGE_ROLES.USER,
             text,
             html,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            attachments
           }
           addMessage(userMessage)
           await sleep(200)
@@ -298,7 +299,8 @@ export function sendMessage({ text, html, context }) {
             : JSON.stringify({
                 message: text,
                 html,
-                context
+                context,
+                attachments
               }),
           signal: currentSession.abortController.signal,
           openWhenHidden: true,
@@ -309,7 +311,7 @@ export function sendMessage({ text, html, context }) {
             }
           },
           onmessage: (response) => {
-            console.log('Event: ', response)
+            // console.log('Event: ', response)
             const data = JSON.parse(response.data)
 
             if (response.event === 'connected') {

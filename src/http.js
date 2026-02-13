@@ -86,6 +86,131 @@ export async function getSession(sessionId) {
 }
 
 /**
+ * Upload attachment with progress tracking
+ * @param {File} file
+ * @param {Function} onProgress - callback (percentComplete, loaded, total)
+ * @param {Function} onComplete - callback (error, response)
+ * @returns {XMLHttpRequest} xhr object to allow abort
+ */
+export function uploadAttachment(file, onProgress, onComplete) {
+  const credentials = getCredentials()
+  const { endpoint, token } = credentials || {}
+
+  if (!endpoint) {
+    const error = new Error(INITIALIZATION_ERROR)
+    if (onComplete) {
+      onComplete(error, null)
+    }
+    return null
+  }
+
+  const xhr = new XMLHttpRequest()
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const uploadUrl = `${endpoint}/upload`
+
+  xhr.open('POST', uploadUrl)
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+  }
+
+  // Upload progress callback
+  if (onProgress) {
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = (event.loaded / event.total) * 100
+        onProgress(percentComplete, event.loaded, event.total)
+      }
+    })
+  }
+
+  // Upload complete callback
+  xhr.addEventListener('load', () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        const response = JSON.parse(xhr.responseText)
+        if (onComplete) {
+          onComplete(null, response)
+        }
+      } catch (error) {
+        if (onComplete) {
+          onComplete(new Error('Failed to parse response'), null)
+        }
+      }
+    } else {
+      if (onComplete) {
+        onComplete(new Error(`Upload failed with status ${xhr.status}`), null)
+      }
+    }
+  })
+
+  xhr.addEventListener('error', () => {
+    if (onComplete) {
+      onComplete(new Error('Network error during upload'), null)
+    }
+  })
+
+  xhr.addEventListener('abort', () => {
+    if (onComplete) {
+      onComplete(new Error('Upload aborted'), null)
+    }
+  })
+
+  xhr.send(formData)
+
+  return xhr
+}
+
+/**
+ * Delete attachment by mediaId
+ * @param {string} mediaId
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function deleteAttachment(mediaId) {
+  const credentials = getCredentials()
+  const { endpoint, token } = credentials || {}
+
+  if (!endpoint) {
+    throw new Error(INITIALIZATION_ERROR)
+  }
+
+  const deleteUrl = `${endpoint}/delete/${mediaId}`
+
+  const headers = {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(deleteUrl, {
+    method: 'DELETE',
+    headers
+  })
+
+  if (!response.ok) {
+    throw new Error(`Delete failed with status ${response.status}`)
+  }
+
+  return { success: true }
+}
+
+/**
+ * Get attachment URL by mediaId
+ * @param {string} mediaId
+ * @returns {string} Full URL to the attachment
+ */
+export function getAttachment(mediaId) {
+  const credentials = getCredentials()
+  const { endpoint } = credentials || {}
+
+  if (!endpoint) {
+    throw new Error(INITIALIZATION_ERROR)
+  }
+
+  return `${endpoint}/upload/${mediaId}`
+}
+
+/**
  * Internal fetch request helper
  * @param {string} pathname
  * @param {string} method
