@@ -78,6 +78,7 @@ export async function getSession(sessionId) {
       : msg.role,
     timestamp: msg.timestamp,
     video: msg.youtubeVideo,
+    attachments: msg.attachments,
     channel: msg.channel,
     done: true
   }))

@@ -351,6 +351,7 @@ export function sendMessage({ text, html, context, attachments }) {
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               reject(new Error(errorMessage))
             } else if (response.event === 'done') {
+              console.log('Done: ', data)
               const lastIndex = currentSession.messages.length - 1
               const lastMsg = currentSession.messages[lastIndex]
               const updatedMsg = {
@@ -363,12 +364,13 @@ export function sendMessage({ text, html, context, attachments }) {
               )
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               resolve(currentSession.sessionId)
-            } else if (data.message !== undefined) {
+            } else if (data.message !== undefined || data.attachments?.length > 0) {
               // If role is supervisor, treat it as a new message
               if (data.role === MESSAGE_ROLES.SUPERVISOR) {
                 const supervisorMessage = {
                   role: MESSAGE_ROLES.SUPERVISOR,
                   text: data.message,
+                  attachments: data.attachments,
                   sources: data.sources,
                   done: true
                 }
@@ -404,6 +406,7 @@ export function sendMessage({ text, html, context, attachments }) {
                 loading: false,
                 text: (lastMsg.text || '') + data.message,
                 sources: data.sources,
+                attachments: data.attachments,
                 done: data.done ?? lastMsg.done
               }
               currentSession.messages = currentSession.messages.map((msg, index) =>
@@ -411,9 +414,6 @@ export function sendMessage({ text, html, context, attachments }) {
               )
 
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
-
-              if (data.done) {
-              }
 
               // Store session info for reuse
               currentSession.sessionId = data.sessionId ?? currentSession.sessionId
