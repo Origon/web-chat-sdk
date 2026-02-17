@@ -234,7 +234,7 @@ export function sendMessage({ text, html, context, attachments }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
-        const isEmpty = !text && !html
+        const isEmpty = !text && !html && !attachments?.length
 
         // Add user message only if there's content
         if (!isEmpty) {
