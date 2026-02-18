@@ -230,7 +230,7 @@ export function getTransport() {
  * @param {{ text: string, html?: string }} message
  * @returns {Promise<string>}
  */
-export function sendMessage({ text, html, context, attachments }) {
+export function sendMessage({ text, html, context, attachments, meta }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
@@ -243,7 +243,8 @@ export function sendMessage({ text, html, context, attachments }) {
             text,
             html,
             timestamp: new Date().toISOString(),
-            attachments
+            attachments,
+            meta
           }
           addMessage(userMessage)
           await sleep(200)
@@ -295,7 +296,7 @@ export function sendMessage({ text, html, context, attachments }) {
           method: 'POST',
           headers,
           body: isEmpty
-            ? undefined
+            ? meta
             : JSON.stringify({
                 message: text,
                 html,
