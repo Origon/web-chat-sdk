@@ -297,6 +297,8 @@ export function sendMessage({ text, html, context, attachments, meta }) {
           headers,
           body: isEmpty
             ? meta
+              ? JSON.stringify({ meta })
+              : undefined
             : JSON.stringify({
                 message: text,
                 html,
