@@ -127,7 +127,9 @@ export async function startChat(payload = {}) {
     let messages = []
     let control = 'agent'
 
-    if (payload.sessionId) {
+    const fetchSession = payload.fetchSession !== false
+
+    if (payload.sessionId && fetchSession) {
       const session = await getSession(payload.sessionId)
       messages = session.messages
       control = session.control || 'agent'
