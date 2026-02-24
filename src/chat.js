@@ -94,6 +94,14 @@ export function getCredentials() {
 }
 
 /**
+ * Get current config data
+ * @returns {object | undefined}
+ */
+export function getConfigData() {
+  return currentSession.configData
+}
+
+/**
  * Update the session ID and notify via callback
  * @param {string} sessionId - The new session ID
  */
