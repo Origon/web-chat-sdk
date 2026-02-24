@@ -65,7 +65,7 @@ export function getSseEndpoint(baseUrl) {
   let sseEndpoint
   try {
     const url = new URL(baseUrl)
-    sseEndpoint = `https://${url.hostname}${url.pathname}/sse`
+    sseEndpoint = `https://${url.hostname}${url.pathname}/sse${url.search}`
   } catch {
     console.error('SSE Invalid base URL: ', baseUrl)
   }

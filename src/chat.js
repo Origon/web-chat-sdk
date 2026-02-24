@@ -22,6 +22,8 @@ import {
  * @property {(sessionId: string) => void} [onSessionUpdate] - Called when session ID is updated
  * @property {(transport: TransportType) => void} [onTransportUpdate] - Called when transport type changes
  * @property {(control: 'agent' | 'human') => void} [onControlUpdate] - Called when control changes between agent and human
+ * @property {(toolCall: { toolCallId: string, toolName: string, arguments: Object, sessionId: string, streamId: string, riskLevel: string }) => void} [onToolCall] - Called when a tool call is received
+ * @property {(toolResponse: Object) => void} [onToolResponse] - Called when a tool response is received
  */
 
 /**
@@ -143,13 +145,11 @@ export async function startChat(payload = {}) {
       control = session.control || 'agent'
     }
 
-    const searchParams = new URLSearchParams()
+    const sseUrl = new URL(getSseEndpoint(currentSession.credentials.endpoint))
     if (!currentSession.credentials.token) {
-      searchParams.set('externalId', getExternalId()) // externalId is needed only for public urls, not for internal chat (where token is provided)
+      sseUrl.searchParams.set('externalId', getExternalId()) // externalId is needed only for public urls, not for internal chat (where token is provided)
     }
-    currentSession.sseUrl = `${getSseEndpoint(
-      currentSession.credentials.endpoint
-    )}?${searchParams.toString()}`
+    currentSession.sseUrl = sseUrl.toString()
     currentSession.sessionId = payload.sessionId
     currentSession.messages = messages
     currentSession.control = control
@@ -240,7 +240,7 @@ export function getTransport() {
  * @param {{ text: string, html?: string }} message
  * @returns {Promise<string>}
  */
-export function sendMessage({ text, html, context, attachments, meta }) {
+export function sendMessage({ text, html, context, attachments, mode, meta, createSystem }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
@@ -254,7 +254,8 @@ export function sendMessage({ text, html, context, attachments, meta }) {
             html,
             timestamp: new Date().toISOString(),
             attachments,
-            meta
+            meta,
+            createSystem
           }
           addMessage(userMessage)
           await sleep(200)
@@ -313,7 +314,9 @@ export function sendMessage({ text, html, context, attachments, meta }) {
                 message: text,
                 html,
                 context,
-                attachments
+                attachments,
+                mode,
+                createSystem
               }),
           signal: currentSession.abortController.signal,
           openWhenHidden: true,
@@ -346,6 +349,24 @@ export function sendMessage({ text, html, context, attachments, meta }) {
                 currentSession.control = data.control
                 currentSession.callbacks.onControlUpdate?.(data.control)
               }
+            } else if (response.event === 'done') {
+              console.log('Done: ', data)
+              const lastIndex = currentSession.messages.length - 1
+              const lastMsg = currentSession.messages[lastIndex]
+              const updatedMsg = {
+                ...lastMsg,
+                loading: false,
+                done: true
+              }
+              currentSession.messages = currentSession.messages.map((msg, index) =>
+                index === lastIndex ? updatedMsg : msg
+              )
+              currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
+              resolve(currentSession.sessionId)
+            } else if (response.event === 'tool_call') {
+              currentSession.callbacks.onToolCall?.(data)
+            } else if (response.event === 'tool_response') {
+              currentSession.callbacks.onToolResponse?.(data)
             } else if (data.error) {
               const errorMessage =
                 data.error && typeof data.error === 'string'
@@ -363,20 +384,6 @@ export function sendMessage({ text, html, context, attachments, meta }) {
               )
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               reject(new Error(errorMessage))
-            } else if (response.event === 'done') {
-              console.log('Done: ', data)
-              const lastIndex = currentSession.messages.length - 1
-              const lastMsg = currentSession.messages[lastIndex]
-              const updatedMsg = {
-                ...lastMsg,
-                loading: false,
-                done: true
-              }
-              currentSession.messages = currentSession.messages.map((msg, index) =>
-                index === lastIndex ? updatedMsg : msg
-              )
-              currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
-              resolve(currentSession.sessionId)
             } else if (data.message !== undefined || data.attachments?.length > 0) {
               // If role is supervisor, treat it as a new message
               if (data.role === MESSAGE_ROLES.SUPERVISOR) {

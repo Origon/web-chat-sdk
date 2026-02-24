@@ -288,7 +288,15 @@ async function fetchRequest(pathname, method = 'GET', body = null) {
     throw new Error(INITIALIZATION_ERROR)
   }
 
-  const url = `${endpoint}${pathname}`
+  const baseUrl = new URL(endpoint)
+  const [path, queryString] = pathname.split('?')
+  baseUrl.pathname = baseUrl.pathname.replace(/\/$/, '') + path
+  if (queryString) {
+    new URLSearchParams(queryString).forEach((value, key) => {
+      baseUrl.searchParams.append(key, value)
+    })
+  }
+  const url = baseUrl.toString()
 
   const headers = {
     'Content-Type': 'application/json'
