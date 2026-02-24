@@ -3,7 +3,7 @@
  * Handles all HTTP requests without depending on external state
  */
 
-import { getCredentials, getExternalId } from './chat.js'
+import { getCredentials, getExternalId, getConfigData } from './chat.js'
 import { MESSAGE_ROLES } from './constants.js'
 
 const AUTHENTICATION_ERROR = 'Something went wrong initializing the chat'
@@ -87,6 +87,57 @@ export async function getSession(sessionId) {
 }
 
 /**
+ * Validate a file against attachment config rules
+ * @param {File} file
+ * @returns {string|null} Error message if validation fails, null if valid
+ */
+function validateAttachment(file) {
+  const configData = getConfigData()
+  const attachmentsConfig = configData?.attachments
+
+  if (!attachmentsConfig) {
+    return 'Attachments are not enabled'
+  }
+
+  const fileName = file.name || ''
+  const fileExtension = fileName.split('.').pop()?.toLowerCase()
+
+  if (!fileExtension) {
+    return 'File type is not supported'
+  }
+
+  // Find the category that supports this file extension
+  const categories = ['images', 'documents', 'audio', 'videos']
+  let matchedCategory = null
+  let matchedConfig = null
+
+  for (const category of categories) {
+    const categoryConfig = attachmentsConfig[category]
+    if (categoryConfig?.supportedFileTypes?.includes(fileExtension)) {
+      matchedCategory = category
+      matchedConfig = categoryConfig
+      break
+    }
+  }
+
+  if (!matchedCategory) {
+    return `File type ".${fileExtension}" is not supported`
+  }
+
+  if (!matchedConfig.enabled) {
+    return `${matchedCategory.charAt(0).toUpperCase() + matchedCategory.slice(1)} attachments are not supported`
+  }
+
+  // maxSize is in MB
+  const fileSizeMB = file.size / (1024 * 1024)
+  if (matchedConfig.maxSize && fileSizeMB > matchedConfig.maxSize) {
+    return `${fileName} size exceeds the maximum allowed size of ${matchedConfig.maxSize}MB`
+  }
+
+  return null
+}
+
+/**
  * Upload attachment with progress tracking
  * @param {File} file
  * @param {Function} onProgress - callback (percentComplete, loaded, total)
@@ -103,6 +154,17 @@ export function uploadAttachment(file, onProgress, onComplete) {
       onComplete(error, null)
     }
     return null
+  }
+
+  // Validate attachment against config (skip if authenticated via token)
+  if (!token) {
+    const validationError = validateAttachment(file)
+    if (validationError) {
+      if (onComplete) {
+        onComplete(new Error(validationError), null)
+      }
+      return null
+    }
   }
 
   const xhr = new XMLHttpRequest()
