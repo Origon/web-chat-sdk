@@ -22,8 +22,8 @@ import {
  * @property {(sessionId: string) => void} [onSessionUpdate] - Called when session ID is updated
  * @property {(transport: TransportType) => void} [onTransportUpdate] - Called when transport type changes
  * @property {(control: 'agent' | 'human') => void} [onControlUpdate] - Called when control changes between agent and human
- * @property {(toolCall: { toolCallId: string, toolName: string, arguments: Object, sessionId: string, streamId: string, riskLevel: string }) => void} [onToolCall] - Called when a tool call is received
- * @property {(toolResponse: Object) => void} [onToolResponse] - Called when a tool response is received
+ * @property {(toolCalls: Array<{ toolCallId: string, toolName: string, arguments: Object }>) => void} [onToolCalls] - Called when tool calls are received
+ * @property {(mode: string) => void} [onAssistantSwitchMode] - Called when assistant switches mode
  */
 
 /**
@@ -66,6 +66,7 @@ function createSession(callbacks = {}) {
 
 /** @type {ChatSession} */
 let currentSession = createSession()
+
 
 /**
  * Set callbacks for the current session
@@ -193,7 +194,6 @@ function cleanup() {
   const { callbacks, credentials } = currentSession
   currentSession = createSession(callbacks)
   currentSession.credentials = credentials
-
   console.log('Chat session cleaned up')
 }
 
@@ -240,22 +240,40 @@ export function getTransport() {
  * @param {{ text: string, html?: string }} message
  * @returns {Promise<string>}
  */
-export function sendMessage({ text, html, context, attachments, mode, meta, createSystem }) {
+export function sendMessage({ text, html, context, attachments, type, results, meta, createSystem, mode = 'assist' }) {
   return new Promise((resolve, reject) => {
     ;(async () => {
       try {
-        const isEmpty = !text && !html && !attachments?.length
+        // --- Tool results type (batch) ---
+        if (type === 'tool_results') {
+          // DON'T add a user message
+
+          // Add a tool message for each result
+          if (Array.isArray(results)) {
+            for (const r of results) {
+              const toolMessage = {
+                role: MESSAGE_ROLES.TOOL,
+                toolCallId: r.toolCallId,
+                toolName: r.toolName,
+                text: JSON.stringify(r.data),
+                done: true
+              }
+              addMessage(toolMessage)
+            }
+          }
+        }
+
+        const hasContent = text || html || attachments?.length
 
         // Add user message only if there's content
-        if (!isEmpty) {
+        if (hasContent) {
           const userMessage = {
             role: MESSAGE_ROLES.USER,
             text,
             html,
             timestamp: new Date().toISOString(),
             attachments,
-            meta,
-            createSystem
+            meta
           }
           addMessage(userMessage)
           await sleep(200)
@@ -306,18 +324,17 @@ export function sendMessage({ text, html, context, attachments, mode, meta, crea
         await fetchEventSource(url.toString(), {
           method: 'POST',
           headers,
-          body: isEmpty
-            ? meta
-              ? JSON.stringify({ meta })
-              : undefined
-            : JSON.stringify({
-                message: text,
-                html,
-                context,
-                attachments,
-                mode,
-                createSystem
-              }),
+          body: JSON.stringify({
+            ...(text && { message: text }),
+            ...(html && { html }),
+            ...(context && { context }),
+            ...(attachments && { attachments }),
+            ...(type && { type }),
+            ...(results && { results }),
+            ...(meta && { meta }),
+            ...(createSystem && { createSystem }),
+            mode
+          }),
           signal: currentSession.abortController.signal,
           openWhenHidden: true,
           onopen: async (response) => {
@@ -363,10 +380,40 @@ export function sendMessage({ text, html, context, attachments, mode, meta, crea
               )
               currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
               resolve(currentSession.sessionId)
-            } else if (response.event === 'tool_call') {
-              currentSession.callbacks.onToolCall?.(data)
-            } else if (response.event === 'tool_response') {
-              currentSession.callbacks.onToolResponse?.(data)
+            } else if (response.event === 'tool_calls') {
+              const toolCalls = data.toolCalls || []
+
+              // Update the loading message as an assistant message with the full payload
+              const lastIndex = currentSession.messages.length - 1
+              const lastMsg = currentSession.messages[lastIndex]
+
+              if (lastMsg?.loading) {
+                const updatedMsg = {
+                  ...lastMsg,
+                  role: MESSAGE_ROLES.ASSISTANT,
+                  text: data.message || '',
+                  toolCalls,
+                  loading: false,
+                  done: true
+                }
+                currentSession.messages = currentSession.messages.map((msg, index) =>
+                  index === lastIndex ? updatedMsg : msg
+                )
+                currentSession.callbacks.onMessageUpdate?.(lastIndex, updatedMsg)
+              } else {
+                const assistantMessage = {
+                  role: MESSAGE_ROLES.ASSISTANT,
+                  text: data.message || '',
+                  toolCalls,
+                  done: true
+                }
+                addMessage(assistantMessage)
+              }
+
+              // Fire onToolCalls — frontend executes the tools locally
+              currentSession.callbacks.onToolCalls?.(toolCalls)
+            } else if (response.event === 'mode_switch') {
+              currentSession.callbacks.onAssistantSwitchMode?.(data.mode)
             } else if (data.error) {
               const errorMessage =
                 data.error && typeof data.error === 'string'

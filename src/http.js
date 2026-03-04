@@ -71,15 +71,11 @@ export async function getSession(sessionId) {
   const data = await response.json()
   const control = data?.control
   const messages = (data?.history ?? []).map((msg) => ({
-    id: msg.id,
-    text: msg.text,
+    ...msg,
     role: msg.youtubeVideo
       ? MESSAGE_ROLES.ASSISTANT // for youtube video messages, role is "system" from backend, we need to make it "assistant"
       : msg.role,
-    timestamp: msg.timestamp,
     video: msg.youtubeVideo,
-    attachments: msg.attachments,
-    channel: msg.channel,
     done: true
   }))
 
